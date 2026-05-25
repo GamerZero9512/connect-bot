@@ -2,7 +2,7 @@
     +-----------+
     | connect.c |
     +-----------+
-    
+
     Strong ANSI C Connect 4 engine
 */
 
@@ -21,7 +21,7 @@ typedef enum {
   COL_D,
   COL_E,
   COL_F,
-  COL_G 
+  COL_G
 } Column;
 
 typedef struct {
@@ -66,7 +66,7 @@ void get_moves(Board *board, Moves *out) {
 
 void render_board(Board *board, int hl) {
   int x, y;
-  (void)hl; /* we're not using hl yet */
+  (void)hl; /* not using hl yet */
   puts("\x1b[44m                      \x1b[0m");
   for(y = 5; y >= 0; y--) {
     fputs("\x1b[44m ", stdout);
@@ -164,6 +164,9 @@ void undo_move(Board *board, Column col) {
 #define SCORE_WIN  1000000
 #define SCORE_LOSS -1000000
 #define SCORE_DRAW 0
+
+/* not sure if this actually works -
+   I don't have any non-GNU compilers */
 
 #ifndef __GNUC__
 #define __builtin_popcountll(x) \
@@ -378,4 +381,6 @@ int main(int argc, char *argv[]) {
 /*
     Example usage:
     ./connect -d 20 -1 human -2 bot  # set engine depth 20, p1 is human, p2 is bot
+
+    Recommend engine depths 5-7 for 'easy mode'
 */
