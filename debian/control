@@ -1,0 +1,13 @@
+Source: connect-bot
+Section: net
+Priority: optional
+Maintainer: GamerZero9512 <josh.abedelmassieh@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: connect-bot
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Strong ANSI C Connect 4 engine
+ A strong Connect 4 engine written in ANSI C89.

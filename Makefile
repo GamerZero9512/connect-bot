@@ -1,3 +1,6 @@
+PREFIX ?= /usr
+BINDIR ?= $(PREFIX)/bin
+
 FLAGS ?=
 CC ?= cc
 
@@ -7,7 +10,7 @@ else
 	TARGET ?= connect
 endif
 
-.PHONY: clean
+.PHONY: all debug clean install
 
 all: $(TARGET)
 
@@ -16,6 +19,9 @@ $(TARGET): connect.c
 
 debug: connect.c
 	$(CC) -O0 -fno-builtin-optimizations -g3 -fsanitize=address,undefined,leak connect.c -Wall -Wextra -pedantic -Werror -std=c89 $(FLAGS) -o $(TARGET)
+
+install: $(TARGET)
+	install -Dm755 $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
 
 clean:
 	rm -f $(TARGET)
