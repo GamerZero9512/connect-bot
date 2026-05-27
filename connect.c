@@ -257,7 +257,7 @@ int search(Board *board, Turn turn, int depth, int alpha, int beta) {
   Moves moves;
   int i, score;
   WinState won = check_won(board);
-  if (won != WIN_NONE) return SCORE_LOSS;
+  if(won != WIN_NONE) return SCORE_LOSS;
   if(depth == 0) return evaluate(board);
   get_moves(board, &moves);
   if(moves.count == 0) return SCORE_DRAW;
@@ -314,6 +314,7 @@ uint8_t turn_human(Board *board, Turn turn, int *last_move) {
   *last_move = do_move(board, (Column)selection, turn);
   return 0;
 }
+
 void turn_bot(Board *board, Turn turn, int depth, int *last_move) {
   clock_t start, end;
   double elapsed;
@@ -442,5 +443,5 @@ int main(int argc, char *argv[]) {
     Example usage:
     ./connect -h -d 20 -1 human -2 bot  # set engine depth 20, p1 is human, p2 is bot, highlight last move
 
-    Recommend engine depths 5-7 for 'easy mode'
+    Recommend engine depth 5 for 'easy' or 7-8 for 'medium'
 */
