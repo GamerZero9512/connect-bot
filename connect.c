@@ -91,7 +91,7 @@ void render_board(Board *board) {
 #define GET_ANSI(c) ((c) && ((hl / 7 == y) || (hl / 7 == y - 1)) ? "\x1b[104m" : "\x1b[44m")
 
 void render_board_hl(Board *board, int hl) {
-  int x, y = 5;
+  int x, y = 6;
   printf("\x1b[44m%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s \x1b[0m\n",
          GET_ANSI(hl % 7 == 0), /* can't be -1 so can simplify */
          GET_ANSI(hl % 7 == 0),
