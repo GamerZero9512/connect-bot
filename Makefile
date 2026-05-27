@@ -1,4 +1,5 @@
 FLAGS ?=
+CC ?= cc
 
 ifeq ($(OS),Windows_NT)
 	TARGET ?= connect.exe
@@ -11,10 +12,10 @@ endif
 all: $(TARGET)
 
 $(TARGET): connect.c
-	gcc -O2 connect.c -Wall -Wextra -Wpedantic -Werror -std=c89 $(FLAGS) -o $(TARGET)
+	$(CC) -O2 connect.c -Wall -Wextra -pedantic -std=c89 $(FLAGS) -o $(TARGET)
 
 debug: connect.c
-	gcc -O0 -fno-builtin-optimizations -g3 -fsanitize=address,undefined,leak connect.c -Wall -Wextra -Wpedantic -Werror -std=c89 $(FLAGS) -o $(TARGET)
+	$(CC) -O0 -fno-builtin-optimizations -g3 -fsanitize=address,undefined,leak connect.c -Wall -Wextra -pedantic -Werror -std=c89 $(FLAGS) -o $(TARGET)
 
 clean:
 	rm -f $(TARGET)

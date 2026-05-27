@@ -51,6 +51,11 @@ typedef enum {
   PT_HUMAN
 } PlayerType;
 
+typedef enum {
+  HL_OFF,
+  HL_ON
+} HlMode;
+
 /* ==================== FUNCTIONS ==================== */
 
 void get_moves(Board *board, Moves *out) {
@@ -64,10 +69,9 @@ void get_moves(Board *board, Moves *out) {
   }
 }
 
-void render_board(Board *board, int hl) {
+void render_board(Board *board) {
   int x, y;
-  (void)hl; /* not using hl yet */
-  puts("\x1b[44m                      \x1b[0m");
+  printf("\x1b[44m                      \x1b[0m\n");
   for(y = 5; y >= 0; y--) {
     fputs("\x1b[44m ", stdout);
     for(x = 0; x < 7; x++) {
@@ -79,6 +83,57 @@ void render_board(Board *board, int hl) {
       fputs("\x1b[44m ", stdout);
     }
     puts("\x1b[0m\n\x1b[44m                      \x1b[0m");
+  }
+  fputc('\n', stdout);
+}
+
+/* to reduce code verbosity */
+#define GET_ANSI(c) ((c) && ((hl / 7 == y) || (hl / 7 == y - 1)) ? "\x1b[104m" : "\x1b[44m")
+
+void render_board_hl(Board *board, int hl) {
+  int x, y = 5;
+  printf("\x1b[44m%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s \x1b[0m\n",
+         GET_ANSI(hl % 7 == 0), /* can't be -1 so can simplify */
+         GET_ANSI(hl % 7 == 0),
+         GET_ANSI(hl % 7 == 0 || hl % 7 == 1),
+         GET_ANSI(hl % 7 == 1),
+         GET_ANSI(hl % 7 == 1 || hl % 7 == 2),
+         GET_ANSI(hl % 7 == 2),
+         GET_ANSI(hl % 7 == 2 || hl % 7 == 3),
+         GET_ANSI(hl % 7 == 3),
+         GET_ANSI(hl % 7 == 3 || hl % 7 == 4),
+         GET_ANSI(hl % 7 == 4),
+         GET_ANSI(hl % 7 == 4 || hl % 7 == 5),
+         GET_ANSI(hl % 7 == 5),
+         GET_ANSI(hl % 7 == 5 || hl % 7 == 6),
+         GET_ANSI(hl % 7 == 6),
+         GET_ANSI(hl % 7 == 6));
+  for(y = 5; y >= 0; y--) {
+    printf("\x1b[%sm ", (hl / 7 == y) && (hl % 7 == 0) ? "104" : "44");
+    for(x = 0; x < 7; x++) {
+      int i = x + y * 7;
+      if(((board->red >> i) & 1) && ((board->yellow >> i) & 1)) printf("\x1b[41m \x1b[43m ");
+      else if((board->red >> i) & 1) printf("\x1b[41m  ");
+      else if((board->yellow >> i) & 1) printf("\x1b[43m  ");
+      else fputs("\x1b[40m  ", stdout);
+      printf("\x1b[%sm ", (hl / 7 == y) && (hl % 7 == x || hl % 7 == x + 1) ? "104" : "44");
+    }
+    printf("\x1b[0m\n\x1b[44m%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s \x1b[0m\n",
+           GET_ANSI(hl % 7 == 0),
+           GET_ANSI(hl % 7 == 0),
+           GET_ANSI(hl % 7 == 0 || hl % 7 == 1),
+           GET_ANSI(hl % 7 == 1),
+           GET_ANSI(hl % 7 == 1 || hl % 7 == 2),
+           GET_ANSI(hl % 7 == 2),
+           GET_ANSI(hl % 7 == 2 || hl % 7 == 3),
+           GET_ANSI(hl % 7 == 3),
+           GET_ANSI(hl % 7 == 3 || hl % 7 == 4),
+           GET_ANSI(hl % 7 == 4),
+           GET_ANSI(hl % 7 == 4 || hl % 7 == 5),
+           GET_ANSI(hl % 7 == 5),
+           GET_ANSI(hl % 7 == 5 || hl % 7 == 6),
+           GET_ANSI(hl % 7 == 6),
+           GET_ANSI(hl % 7 == 6));
   }
   fputc('\n', stdout);
 }
@@ -168,32 +223,33 @@ void undo_move(Board *board, Column col) {
 /* not sure if this actually works -
    I don't have any non-GNU compilers */
 
-#ifndef __GNUC__
-#define __builtin_popcountll(x) \
-({ \
-    uint64_t i = x; \
-    i = i - ((i >> 1) & 0x5555555555555555); \
-    i = (i & 0x3333333333333333) + ((i >> 2) & 0x3333333333333333); \
-    i = (i + (i >> 4)) & 0x0f0f0f0f0f0f0f0f; \
-    i = i + (i >> 8); \
-    i = i + (i >> 16); \
-    i = i + (i >> 32); \
-    (int)(i & 0x7f); \
-})
+#if defined(__GNUC__) || defined(__clang__)
+  #define popcountll __builtin_popcountll
+#else
+static int portable_popcountll(uint64_t x) {
+  x = x - ((x >> 1) & (uint64_t)0x5555555555555555);
+  x = (x & (uint64_t)0x3333333333333333) + ((x >> 2) & (uint64_t)0x3333333333333333);
+  x = (x + (x >> 4)) & (uint64_t)0x0F0F0F0F0F0F0F0F;
+  x = x + (x >> 8);
+  x = x + (x >> 16);
+  x = x + (x >> 32);
+  return (int)(x & 0x7F);
+}
+#define popcountll portable_popcountll
 #endif
 
 int evaluate(Board *board) {
   int score = 0;
   uint64_t b = board->red;
-  score += __builtin_popcountll(b & (b >> 1));
-  score += __builtin_popcountll(b & (b >> 7));
-  score += __builtin_popcountll(b & (b >> 8));
-  score += __builtin_popcountll(b & (b >> 6));
+  score += popcountll(b & (b >> 1));
+  score += popcountll(b & (b >> 7));
+  score += popcountll(b & (b >> 8));
+  score += popcountll(b & (b >> 6));
   b = board->yellow;
-  score -= __builtin_popcountll(b & (b >> 1));
-  score -= __builtin_popcountll(b & (b >> 7));
-  score -= __builtin_popcountll(b & (b >> 8));
-  score -= __builtin_popcountll(b & (b >> 6));
+  score -= popcountll(b & (b >> 1));
+  score -= popcountll(b & (b >> 7));
+  score -= popcountll(b & (b >> 8));
+  score -= popcountll(b & (b >> 6));
   return score;
 }
 
@@ -279,6 +335,7 @@ int main(int argc, char *argv[]) {
   int last_move = -1;
   PlayerType p1 = PT_BOT;
   PlayerType p2 = PT_HUMAN;
+  HlMode hl = HL_OFF;
 
   int i;
   for(i = 1; i < argc; i++) {
@@ -331,16 +388,18 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "expected one of 'red' or 'yellow' for flag '%s'\n", argv[i - 1]);
           return 1;
         }
-      } else if(strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
+      } else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--highlight") == 0) hl = HL_ON;
+      else if(strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
         printf(
           "usage: %s [options]\n"
           "\n"
           "options:\n"
-          "  --help,   -?              Show this help message\n"
-          "  --depth,  -d <depth>      Specify custom engine search depth\n"
-          "  --red,    -1 <human|bot>  Specify whether Red is a bot or human\n"
-          "  --yellow, -2 <human|bot>  Specify whether Yellow is a bot or human\n"
-          "  --start,  -s <red|yellow> Specify which colour starts first\n"
+          "  --help,      -?              Show this help message\n"
+          "  --depth,     -d <depth>      Specify custom engine search depth\n"
+          "  --red,       -1 <human|bot>  Specify whether Red is a bot or human\n"
+          "  --yellow,    -2 <human|bot>  Specify whether Yellow is a bot or human\n"
+          "  --start,     -s <red|yellow> Specify which colour starts first\n"
+          "  --highlight, -h              Highlight the latest move\n"
         , argv[0]);
         return 0;
       } else {
@@ -351,7 +410,8 @@ int main(int argc, char *argv[]) {
   }
 
   while(1) {
-    render_board(&board, last_move);
+    if(hl) render_board_hl(&board, last_move);
+    else render_board(&board);
     if(check_won(&board) == WIN_RED) {
       puts("Red wins!");
       break;
@@ -380,7 +440,7 @@ int main(int argc, char *argv[]) {
 
 /*
     Example usage:
-    ./connect -d 20 -1 human -2 bot  # set engine depth 20, p1 is human, p2 is bot
+    ./connect -h -d 20 -1 human -2 bot  # set engine depth 20, p1 is human, p2 is bot, highlight last move
 
     Recommend engine depths 5-7 for 'easy mode'
 */
