@@ -1,0 +1,17 @@
+{
+  "name": "connect-bot",
+  "description": "A strong ANSI C Connect 4 engine",
+  "source": null,
+  "compak-min": 1,
+  "deps": [],
+  "exclude": [".git", "debian", "connect", ".gitignore"],
+  "build": [["make", "clean", "all"]],
+  "install": {
+    "bin": ["connect"],
+    "lib": [],
+    "include": [],
+    "man": {
+      "1": ["docs/connect.1"]
+    }
+  }
+}

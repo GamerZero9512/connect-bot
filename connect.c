@@ -238,14 +238,33 @@ static int portable_popcountll(uint64_t x) {
 #define popcountll portable_popcountll
 #endif
 
-int evaluate(Board *board) {
+int evaluate(Board *board, Turn turn) {
   int score = 0;
-  uint64_t b = board->red;
+  uint64_t b;
+  WinState won;
+  if(turn == TURN_RED)
+    b = board->red;
+  else
+    b = board->yellow;
+  won = check_won(board);
+  switch(turn) {
+    case TURN_RED:
+      if(won == WIN_RED) return SCORE_WIN;
+      if(won == WIN_YELLOW) return SCORE_LOSS;
+      break;
+    case TURN_YELLOW:
+      if(won == WIN_RED) return SCORE_LOSS;
+      if(won == WIN_YELLOW) return SCORE_WIN;
+      break;
+  }
   score += popcountll(b & (b >> 1));
   score += popcountll(b & (b >> 7));
   score += popcountll(b & (b >> 8));
   score += popcountll(b & (b >> 6));
-  b = board->yellow;
+  if(turn == TURN_RED)
+    b = board->yellow;
+  else
+    b = board->red;
   score -= popcountll(b & (b >> 1));
   score -= popcountll(b & (b >> 7));
   score -= popcountll(b & (b >> 8));
@@ -257,8 +276,17 @@ int search(Board *board, Turn turn, int depth, int alpha, int beta) {
   Moves moves;
   int i, score;
   WinState won = check_won(board);
-  if(won != WIN_NONE) return SCORE_LOSS;
-  if(depth == 0) return evaluate(board);
+  switch(turn) {
+    case TURN_RED:
+      if(won == WIN_RED) return SCORE_WIN;
+      if(won == WIN_YELLOW) return SCORE_LOSS;
+      break;
+    case TURN_YELLOW:
+      if(won == WIN_RED) return SCORE_LOSS;
+      if(won == WIN_YELLOW) return SCORE_WIN;
+      break;
+  }
+  if(depth == 0) return evaluate(board, turn);
   get_moves(board, &moves);
   if(moves.count == 0) return SCORE_DRAW;
   for(i = 0; i < moves.count; i++) {
@@ -274,24 +302,27 @@ int search(Board *board, Turn turn, int depth, int alpha, int beta) {
 
 Column get_best_move(Board board, Turn turn, int depth) {
   Moves moves;
-  int i, d, best_score, score;
+  int i, d, best_score, score, eval;
   Column best_move;
   get_moves(&board, &moves);
   best_move = moves.columns[0];
   for(d = 1; d <= depth; d++) {
-    best_score = -1000000;
+    best_score = SCORE_LOSS;
     for(i = 0; i < moves.count; i++) {
       Column move = moves.columns[i];
       do_move(&board, move, turn);
-      score = -search(&board, 1 - turn, d - 1, -1000000, 1000000);
-      if(score >= best_score) {
+      score = -search(&board, 1 - turn, d - 1, SCORE_LOSS, SCORE_WIN);
+      if(score > best_score) {
         best_score = score;
         best_move = move;
       }
       undo_move(&board, move);
     }
   }
-  fprintf(stderr, "eval: %d\n", evaluate(&board));
+  eval = search(&board, turn, depth, SCORE_LOSS, SCORE_WIN);
+  if(eval == SCORE_WIN) fprintf(stderr, "eval: +%s\n", turn == TURN_RED ? "RED" : "YELLOW");
+  else if(eval == SCORE_LOSS) fprintf(stderr, "eval: +%s\n", turn == TURN_RED ? "YELLOW" : "RED");
+  else fprintf(stderr, "eval: %d\n", eval);
   return best_move;
 }
 
