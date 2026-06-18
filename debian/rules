@@ -1,4 +1,0 @@
-#!/usr/bin/make -f
-
-%:
-	dh $@ --no-automatic-dbgsym
