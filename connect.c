@@ -381,7 +381,7 @@ int main(int argc, char *argv[]) {
         i++;
         depth = strtol(argv[i], &end, 0);
         if(*end != '\0') {
-          fprintf(stderr, "invalid character '%c' in parameter for '%s'", *end, argv[i - 1]);
+          fprintf(stderr, "invalid character '%c' in parameter for '%s'\n", *end, argv[i - 1]);
           return 1;
         }
       } else if(strcmp(argv[i], "-1") == 0 || strcmp(argv[i], "--player1") == 0) {
@@ -428,8 +428,8 @@ int main(int argc, char *argv[]) {
           "options:\n"
           "  --help,      -?              Show this help message\n"
           "  --depth,     -d <depth>      Specify custom engine search depth\n"
-          "  --red,       -1 <human|bot>  Specify whether Red is a bot or human\n"
-          "  --yellow,    -2 <human|bot>  Specify whether Yellow is a bot or human\n"
+          "  --player1,   -1 <human|bot>  Specify whether Player 1 is a bot or human\n"
+          "  --player2,   -2 <human|bot>  Specify whether Player 2 is a bot or human\n"
           "  --start,     -s <red|yellow> Specify which colour starts first\n"
           "  --highlight, -h              Highlight the latest move\n"
         , argv[0]);
@@ -469,10 +469,3 @@ int main(int argc, char *argv[]) {
   }
   return 0;
 }
-
-/*
-    Example usage:
-    ./connect -h -d 20 -1 human -2 bot  # set engine depth 20, p1 is human, p2 is bot, highlight last move
-
-    Recommend engine depth 5 for 'easy' or 7-8 for 'medium'
-*/
