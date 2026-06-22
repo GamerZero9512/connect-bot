@@ -1,11 +1,11 @@
 {
   "name": "connect-bot",
-  "description": "A strong ANSI C Connect 4 engine",
+  "description": "ANSI C Connect 4 engine with Game Review",
   "source": null,
   "compak-min": 1,
   "deps": [],
   "exclude": [".git", "debian", "connect", ".gitignore"],
-  "build": [["make", "clean", "all"]],
+  "build": [["make", "clean", "fast"]],
   "install": {
     "bin": ["connect"],
     "lib": [],

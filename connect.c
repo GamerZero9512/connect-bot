@@ -3,7 +3,7 @@
     | connect.c |
     +-----------+
 
-    Strong ANSI C Connect 4 engine
+    ANSI C Connect 4 engine with Game Review
 */
 
 #include <stdio.h>
@@ -11,6 +11,12 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+
+/* tried to use INT_MIN/MAX from limits.h
+   but the bot played worse?              */
+#define SCORE_WIN  1000000
+#define SCORE_LOSS -1000000
+#define SCORE_DRAW 0
 
 /* ==================== TYPEDEFS ==================== */
 
@@ -56,16 +62,46 @@ typedef enum {
   HL_ON
 } HlMode;
 
+typedef enum {
+  REV_ILLEGAL,
+  REV_BEST,
+  REV_GREAT,
+  REV_GOOD,
+  REV_INACCURACY,
+  REV_MISTAKE,
+  REV_BLUNDER
+} RevClass;
+
+/* ==================== VARIABLES ==================== */
+
+const char *rev_names[7] = {
+  "Illegal",
+  "Best",
+  "Great",
+  "Good",
+  "Inaccuracy",
+  "Mistake",
+  "Blunder"
+};
+
+static const int move_order[7] = {
+  3, 2, 4, 1, 5, 0, 6
+};
+
 /* ==================== FUNCTIONS ==================== */
 
+int is_legal_move(Board *board, Column x) {
+  return !(((board->red >> (x + 35)) & 1) || ((board->yellow >> (x + 35)) & 1));
+}
+
 void get_moves(Board *board, Moves *out) {
-  int x;
+  int i, x;
   out->count = 0;
-  for(x = 0; x < 7; x++) {
+  for(i = 0; i < 7; i++) {
+    x = move_order[i];
     /* check if the top cell of the column is empty */
-    if(!(((board->red >> (x + 35)) & 1) || ((board->yellow >> (x + 35)) & 1))) {
+    if(!(((board->red >> (x + 35)) & 1) || ((board->yellow >> (x + 35)) & 1)))
       out->columns[out->count++] = x;
-    }
   }
 }
 
@@ -211,14 +247,21 @@ void undo_move(Board *board, Column col) {
   }
 }
 
-/* ==================== ENGINE ==================== */
+void win_game(const char *msg, char *game) {
+  puts(msg);
+  printf("game code: %s\n", game);
+}
 
-/* tried to use INT_MIN/MAX from limits.h
-   but the bot played worse?              */
+void eval_print(int eval, Turn turn, int err) {
+  FILE *stream;
+  if(err) stream = stdout;
+  else stream = stderr;
+  if(eval == SCORE_WIN) fprintf(stream, "+%s", turn == TURN_RED ? "RED" : "YELLOW");
+  else if(eval == SCORE_LOSS) fprintf(stream, "+%s", turn == TURN_RED ? "YELLOW" : "RED");
+  else fprintf(stream, "%s%d", eval > 0 ? "+" : "", eval);
+}
 
-#define SCORE_WIN  1000000
-#define SCORE_LOSS -1000000
-#define SCORE_DRAW 0
+/* ==================== ENGINE/SEARCH ==================== */
 
 /* not sure if this actually works -
    I don't have any non-GNU compilers */
@@ -300,9 +343,9 @@ int search(Board *board, Turn turn, int depth, int alpha, int beta) {
   return alpha;
 }
 
-Column get_best_move(Board board, Turn turn, int depth) {
+Column get_best_move(Board board, Turn turn, int depth, int print_eval) {
   Moves moves;
-  int i, d, best_score, score, eval;
+  int i, d, best_score, score;
   Column best_move;
   get_moves(&board, &moves);
   best_move = moves.columns[0];
@@ -319,10 +362,12 @@ Column get_best_move(Board board, Turn turn, int depth) {
       undo_move(&board, move);
     }
   }
-  eval = search(&board, turn, depth, SCORE_LOSS, SCORE_WIN);
-  if(eval == SCORE_WIN) fprintf(stderr, "eval: +%s\n", turn == TURN_RED ? "RED" : "YELLOW");
-  else if(eval == SCORE_LOSS) fprintf(stderr, "eval: +%s\n", turn == TURN_RED ? "YELLOW" : "RED");
-  else fprintf(stderr, "eval: %d\n", eval);
+  if(print_eval) {
+    int eval = search(&board, turn, depth, SCORE_LOSS, SCORE_WIN);
+    fputs("eval: ", stderr);
+    eval_print(eval, turn, 0);
+    fputc('\n', stderr);
+  }
   return best_move;
 }
 
@@ -335,11 +380,11 @@ uint8_t turn_human(Board *board, Turn turn, int *last_move) {
   scanf("%d", &selection);
   selection--;
   if(selection < 0 || selection > 6) {
-    puts("Invalid input");
+    puts("invalid input (out of bounds)\n");
     return 1;
   }
   if((board->red | board->yellow) & ((uint64_t)1 << (35 + selection))) {
-    puts("Invalid input");
+    puts("invalid input (column is full)\n");
     return 1;
   }
   *last_move = do_move(board, (Column)selection, turn);
@@ -350,11 +395,88 @@ void turn_bot(Board *board, Turn turn, int depth, int *last_move) {
   clock_t start, end;
   double elapsed;
   start = clock();
-  *last_move = do_move(board, get_best_move(*board, turn, depth), turn);
+  *last_move = do_move(board, get_best_move(*board, turn, depth, 1), turn);
   end = clock();
   elapsed = (double)(end - start) / CLOCKS_PER_SEC;
   fprintf(stderr, "took %.3f seconds\n", elapsed);
+}
 
+/* ==================== GAME REVIEW ==================== */
+
+/*
+  REV_ILLEGAL,
+  REV_BEST,
+  REV_GREAT,
+  REV_GOOD,
+  REV_INACCURACY,
+  REV_MISTAKE,
+  REV_BLUNDER
+*/
+
+RevClass review_move(Board *board, Column move, Turn turn, int depth, Column *best, int *new) {
+  int loss, old;
+  old = search(board, turn, depth, SCORE_LOSS, SCORE_WIN);
+  if(!is_legal_move(board, move)) return REV_ILLEGAL;
+  *best = get_best_move(*board, turn, depth, 0);
+  do_move(board, move, turn);
+  *new = -search(board, 1 - turn, depth, SCORE_LOSS, SCORE_WIN);
+  loss = old - *new;
+  if(move == *best) return REV_BEST;
+  if(loss <= 0) return REV_GREAT;
+  if(loss <= 1) return REV_GOOD;
+  if(loss <= 3) return REV_INACCURACY;
+  if(loss <= 6) return REV_MISTAKE;
+  return REV_BLUNDER;
+}
+
+void review_game(const char *game, int depth, Board board, Turn turn) {
+  int i, len = strlen(game);
+  RevClass rev;
+  const char *col;
+  Column best;
+  int eval;
+
+  for(i = 0; i < len; i++) {
+    if(game[i] < 49 || game[i] > 55) {
+      fprintf(stderr, "invalid move (invalid character)\n");
+      continue;
+    }
+    rev = review_move(&board, game[i] - 49, turn, depth, &best, &eval);
+    if(rev == REV_ILLEGAL) {
+      fprintf(stderr, "invalid move (column is full)\n");
+      continue;
+    }
+    switch(rev) {
+      case REV_ILLEGAL:
+        col = "7";
+        break;
+      case REV_BEST:
+        col = "44";
+        break;
+      case REV_GREAT:
+        col = "46;30";
+        break;
+      case REV_GOOD:
+        col = "42";
+        break;
+      case REV_INACCURACY:
+        col = "43;30";
+        break;
+      case REV_MISTAKE:
+        col = "48;5;208;30";
+        break;
+      case REV_BLUNDER:
+        col = "41";
+        break;
+    }
+    printf("\x1b[4%cm%d\x1b[0m: \x1b[%sm%-10s\x1b[0m (", turn == TURN_RED ? '1' : '3', game[i] - 48, col, rev_names[rev]);
+    eval_print(eval, turn, 1);
+    fputc(')', stdout);
+    if(rev != REV_BEST) printf(" best: %d", best + 1);
+    fputc('\n', stdout);
+    if(i % 2 == 1) fputc('\n', stdout);
+    turn = 1 - turn;
+  }
 }
 
 /* ==================== MAIN ==================== */
@@ -368,6 +490,8 @@ int main(int argc, char *argv[]) {
   PlayerType p1 = PT_BOT;
   PlayerType p2 = PT_HUMAN;
   HlMode hl = HL_OFF;
+  char game[43] = {0};
+  int game_idx = 0;
 
   int i;
   for(i = 1; i < argc; i++) {
@@ -398,7 +522,7 @@ int main(int argc, char *argv[]) {
         }
       } else if(strcmp(argv[i], "-2") == 0 || strcmp(argv[i], "--player2") == 0) {
         if(i >= argc - 1) {
-          fprintf(stderr, "expected parameter for flag '%s'\n", argv[i]);
+          fprintf(stderr, "expected prameter for flag '%s'\n", argv[i]);
           return 1;
         }
         i++;
@@ -420,18 +544,26 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "expected one of 'red' or 'yellow' for flag '%s'\n", argv[i - 1]);
           return 1;
         }
+      } else if(strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "--review") == 0) {
+        if(i >= argc - 1) {
+          fprintf(stderr, "expected parameter for flag '%s'\n", argv[i]);
+          return 1;
+        }
+        review_game(argv[++i], depth, board, turn);
+        return 0;
       } else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--highlight") == 0) hl = HL_ON;
       else if(strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
         printf(
           "usage: %s [options]\n"
           "\n"
           "options:\n"
-          "  --help,      -?              Show this help message\n"
-          "  --depth,     -d <depth>      Specify custom engine search depth\n"
-          "  --player1,   -1 <human|bot>  Specify whether Player 1 is a bot or human\n"
-          "  --player2,   -2 <human|bot>  Specify whether Player 2 is a bot or human\n"
-          "  --start,     -s <red|yellow> Specify which colour starts first\n"
-          "  --highlight, -h              Highlight the latest move\n"
+          "  --help,      -?              Show this help message.\n"
+          "  --depth,     -d <depth>      Specify custom engine search depth.\n"
+          "  --player1,   -1 <human|bot>  Specify whether Player 1 is a bot or human.\n"
+          "  --player2,   -2 <human|bot>  Specify whether Player 2 is a bot or human.\n"
+          "  --start,     -s <red|yellow> Specify which colour starts first.\n"
+          "  --highlight, -h              Highlight the latest move.\n"
+          "  --review,    -r <game>       Review a game from its game code.\n"
         , argv[0]);
         return 0;
       } else {
@@ -445,16 +577,16 @@ int main(int argc, char *argv[]) {
     if(hl) render_board_hl(&board, last_move);
     else render_board(&board);
     if(check_won(&board) == WIN_RED) {
-      puts("Red wins!");
+      win_game("red wins!", game);
       break;
     }
     if(check_won(&board) == WIN_YELLOW) {
-      puts("Yellow wins!");
+      win_game("yellow wins!", game);
       break;
     }
     get_moves(&board, &moves);
     if(moves.count == 0) {
-      puts("Draw!");
+      win_game("draw!", game);
       break;
     }
     if(turn == TURN_RED) {
@@ -466,6 +598,7 @@ int main(int argc, char *argv[]) {
       else if(turn_human(&board, turn, &last_move)) continue;
       turn = TURN_RED;
     }
+    game[game_idx++] = (last_move % 7) + 49;
   }
   return 0;
 }
