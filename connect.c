@@ -284,22 +284,10 @@ static int portable_popcountll(uint64_t x) {
 int evaluate(Board *board, Turn turn) {
   int score = 0;
   uint64_t b;
-  WinState won;
   if(turn == TURN_RED)
     b = board->red;
   else
     b = board->yellow;
-  won = check_won(board);
-  switch(turn) {
-    case TURN_RED:
-      if(won == WIN_RED) return SCORE_WIN;
-      if(won == WIN_YELLOW) return SCORE_LOSS;
-      break;
-    case TURN_YELLOW:
-      if(won == WIN_RED) return SCORE_LOSS;
-      if(won == WIN_YELLOW) return SCORE_WIN;
-      break;
-  }
   score += popcountll(b & (b >> 1));
   score += popcountll(b & (b >> 7));
   score += popcountll(b & (b >> 8));
@@ -319,16 +307,8 @@ int search(Board *board, Turn turn, int depth, int alpha, int beta) {
   Moves moves;
   int i, score;
   WinState won = check_won(board);
-  switch(turn) {
-    case TURN_RED:
-      if(won == WIN_RED) return SCORE_WIN;
-      if(won == WIN_YELLOW) return SCORE_LOSS;
-      break;
-    case TURN_YELLOW:
-      if(won == WIN_RED) return SCORE_LOSS;
-      if(won == WIN_YELLOW) return SCORE_WIN;
-      break;
-  }
+  if(won == WIN_RED) return turn == TURN_RED ? SCORE_WIN : SCORE_LOSS;
+  if(won == WIN_YELLOW) return turn == TURN_RED ? SCORE_LOSS : SCORE_WIN;
   if(depth == 0) return evaluate(board, turn);
   get_moves(board, &moves);
   if(moves.count == 0) return SCORE_DRAW;
