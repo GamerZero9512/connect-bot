@@ -448,16 +448,16 @@ void review_game(const char *game, int depth, Board board, Turn turn) {
     }
     switch(rev) {
       case REV_ILLEGAL:
-        col = "7";
+        col = "40;37";
         break;
       case REV_BEST:
-        col = "44";
+        col = "44;37";
         break;
       case REV_GREAT:
         col = "46;30";
         break;
       case REV_GOOD:
-        col = "42";
+        col = "42;37";
         break;
       case REV_INACCURACY:
         col = "43;30";
@@ -466,10 +466,10 @@ void review_game(const char *game, int depth, Board board, Turn turn) {
         col = "48;5;208;30";
         break;
       case REV_BLUNDER:
-        col = "41";
+        col = "41;37";
         break;
     }
-    printf("\x1b[4%cm%d\x1b[0m: \x1b[%sm%-10s\x1b[0m (", turn == TURN_RED ? '1' : '3', game[i] - 48, col, rev_names[rev]);
+    printf("\x1b[4%cm%d:\x1b[0m \x1b[%sm%-10s\x1b[0m (", turn == TURN_RED ? '1' : '3', game[i] - 48, col, rev_names[rev]);
     eval_print(eval, turn, 1);
     fputc(')', stdout);
     if(rev != REV_BEST) printf(" best: %d", best + 1);
