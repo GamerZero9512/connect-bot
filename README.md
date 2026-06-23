@@ -1,5 +1,5 @@
 # connect-bot
-Strong ANSI C89 Connect 4 engine with TUI display
+ANSI C Connect 4 engine with Game Review
 
 ![build: passing](https://img.shields.io/badge/build-passing-green)
 ![last updated](https://img.shields.io/github/last-commit/gamerzero9512/connect-bot?color=blue)
