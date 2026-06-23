@@ -7,3 +7,5 @@ ANSI C Connect 4 engine with Game Review
 
 ![screenshot](https://raw.githubusercontent.com/GamerZero9512/repostuff/refs/heads/main/connect-bot.png)
 ###### Screenshot of connect-bot playing against itself
+
+###### Game code: 434434433555433555111111777777222222
